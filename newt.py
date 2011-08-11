@@ -2,6 +2,7 @@ import tweepy, simplejson, urllib, os,datetime,re
 import md5, tempfile, time
 import csv,yql
 import itertools
+#import klout
 import xml.sax.saxutils as saxutils
 from urlparse import urlparse
 import networkx as nx
@@ -21,6 +22,15 @@ def getTwapperkeeperKey():
   key=privatebits.getTwapperkeeperKey()
   return key
 
+def getKloutKey():
+  kkey=privatebits.getKloutKey()
+  return kkey
+
+def getPeerIndexKey():
+  pkey=privatebits.getPeerIndexKey()
+  return pkey
+
+  
 def getYahooOAuthKey():
   key,shared_secret=privatebits.getYahooOAuthKey()
   return key,shared_secret
@@ -256,6 +266,43 @@ def report(m, verbose=True):
   if verbose is True:
     print m
 #----------------------------------------------------------------
+
+#----------------------------------------------------------------
+def getGenericCachedData(url, cachetime=36000):
+  fetcher=DiskCacheFetcherfname('cache')
+  fn=fetcher.fetch(url, cachetime)
+  f=open(fn)
+  data=f.read()
+  f.close()
+  #print 'data----',data
+  jdata=simplejson.loads(data)
+  return jdata
+
+def getKloutDetails(twpl,kd={}):
+  kkey=getKloutKey()
+  #klout=new Klout()
+  print twpl
+  twl=chunks(twpl,5)
+  for f5 in twl:
+    u=','.join(f5)
+    url='http://api.klout.com/1/users/show.json?key='+kkey+'&users='+u
+    data=getGenericCachedData(url)
+    for d in data['users']:
+      print d
+      kd[d['twitter_screen_name']]=d
+  return kd
+  
+
+#----------------------------------------------------------------
+
+def getPeerIndexDetails(twpl,cachetime=36000):
+  pkey=getPeerIndexKey()
+  for u in twpl:
+    url='http://api.peerindex.net/1/profile/show.json?id='+u+'&api_key='+pkey
+    data=getGenericCachedData(url,cachetime)
+    for d in data:
+      print data[d]
+    time.sleep(2)
 
 #----------------------------------------------------------------
 def createListIfRequired(api, tag):
@@ -595,27 +642,32 @@ def tidyUserRecord(u2):
     u2.description=''
   return u2
 
-def gephiOutputEdgeDefInner(api,f,members,typ='friends'):
+def gephiOutputEdgeDefInner(api,f,members,typ='friends',maxf=4000):
   f.write('edgedef> user VARCHAR,friend VARCHAR\n')
   i=0
   membersid=[]
   for id in members:
     membersid.append(members[id].id)
   M=len(members)
+  Ms=str(M)
   for id in members:
+    i=i+1
     friend=members[id]
     foafs={}
-    report("- finding "+typ+" of whatever (friends? followers?) was passed in of "+friend.screen_name)
-    if typ is 'friends':
+    report("- finding "+typ+" of whatever (friends? followers?) was passed in of "+friend.screen_name+' ('+str(i)+' of '+Ms+')')
+    #danger hack AJH TH - try to minimise long waits for large friend counts
+    if typ == 'friends' and int(friend.friends_count)>0 and int(friend.friends_count)<int(maxf):
       try:
         foafs=api.friends_ids(friend.id)
       except tweepy.error.TweepError,e:
         report(e)
-    else:
-      try:
-        foafs=api.followers_ids(friend.id)
-      except tweepy.error.TweepError,e:
-        report(e)
+    elif typ == 'followers':
+      if int(friend.followers_count)>0 and int(friend.followers_count)<int(maxf):
+        try:
+          foafs=api.followers_ids(friend.id)
+        except tweepy.error.TweepError,e:
+          report(e)
+      else: print 'too many...skipping'
     cofriends=intersect(membersid,foafs)
     #being naughty - changing .status to record no. of foafs/no. in community
     if hasattr(members[id], 'status'):
@@ -635,7 +687,7 @@ def gephiOutputEdgeDefExtra(api,f,members,typ='friends'):
     friend=members[id]
     foafs={}
     report("- finding extra"+typ+" of whatever (friends? followers?) was passed in of "+friend.screen_name)
-    if typ is 'friends':
+    if typ =='friends':
       try:
         foafs=api.friends_ids(friend.id)
       except tweepy.error.TweepError,e:
@@ -660,10 +712,13 @@ def gephiOutputEdgeDefOuter(api,f,members,typ='friends',mode='inclusive'):
   for id in members:
     membersid.append(members[id].id)
   M=len(members)
+  Ms=str(M)
+  i=0
   for id in members:
+    i=i+1
     friend=members[id]
     foafs={}
-    report("- finding "+typ+" of whatever (friends? followers?) was passed in of "+friend.screen_name)
+    report("- finding "+typ+" of whatever (friends? followers?) was passed in of "+friend.screen_name+' ('+Ms+' of '+str(i)+')')
     try:
       if typ is 'friends':
         try:
@@ -885,7 +940,7 @@ def listsmembershipByScreenName(lists,api,u,max=250):
         lists[ulu]=[u]
         lc=lc+1
     if max!='all':
-    	if lc>max: return lists
+      if lc > int(max): return lists
   return lists
 #----------------------------------------------------------------
 
