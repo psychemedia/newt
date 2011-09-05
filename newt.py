@@ -418,11 +418,11 @@ def twSearchHashtag(tweeters,tags,num,tag='ukoer', since='',term=''):
         tweeters[u]={}
         tweeters[u]['count']=1
       ttags=re.findall("#([a-z0-9]+)", i['text'], re.I)
-      for tag in ttags:
-        if tag not in tags:
-    	  tags[tag]=1
+      for tagx in ttags:
+        if tagx not in tags:
+    	  tags[tagx]=1
     	else:
-    	  tags[tag]+=1
+    	  tags[tagx]+=1
     	    
   return tweeters,tags
 
