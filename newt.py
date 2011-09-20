@@ -426,6 +426,38 @@ def twSearchHashtag(tweeters,tags,num,tag='ukoer', since='',term=''):
     	    
   return tweeters,tags
 
+def twSearchTerm(tweeters,tags,num,q='ukoer', since='',term=''):
+  t=int(num/100)
+  page=1
+  while page<=t:
+    url='http://search.twitter.com/search.json?rpp=100&page='+str(page)+'&q='+urllib.quote_plus(q)
+    print url
+    if term!='':
+      url+='+'+urllib.quote_plus(term)
+    '''
+    if since!='':
+     url+='+since:'+since
+    '''
+    page+=1
+    data = simplejson.load(urllib.urlopen(url))
+    for i in data['results']:
+     if not i['text'].startswith('RT @'):
+      u=i['from_user'].strip()
+      if u in tweeters:
+        tweeters[u]['count']+=1
+      else:
+        report("New user: "+u)
+        tweeters[u]={}
+        tweeters[u]['count']=1
+      ttags=re.findall("#([a-z0-9]+)", i['text'], re.I)
+      for tagx in ttags:
+        if tagx not in tags:
+    	  tags[tagx]=1
+    	else:
+    	  tags[tagx]+=1
+    	    
+  return tweeters,tags
+  
 #----------------------------------------------------------------
 def destroyListIfRequired(api,tag):
   lists=api.lists()
@@ -1076,9 +1108,10 @@ def handleOPMLitem(fo,url):
       url='http://query.yahooapis.com/v1/public/yql/psychemedia/feedautodetect?url='+urllib.quote(url)+'&format=json'
       try:
         data = simplejson.load(urllib.urlopen(url))
-        if data['query']['count']>'0':
+        print data
+        if data['query']['count']>0:
           print data['query']
-          if data['query']['count']=='1':
+          if data['query']['count']==1:
             l=data['query']['results']['link']
             furl=checkPathOnFeedURL(l['href'],o)
             print "*****",furl,l['title']
