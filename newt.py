@@ -1,5 +1,5 @@
 import tweepy, simplejson, urllib, os,datetime,re
-import md5, tempfile, time
+import md5, tempfile, time,random
 import csv,yql
 import itertools
 #import klout
@@ -262,6 +262,21 @@ def getTwitterAPI(cachetime=36000):
 #----------------------------------------------------------------
 
 #----------------------------------------------------------------
+def getTwitterAuth():
+  #----------------------------------------------------------------
+  #API settings for Twitter
+  consumer_key,consumer_secret,skey,ssecret=getTwitterKeys()
+  #----------------------------------------------------------------
+
+  #----------------------------------------------------------------
+  #API initialisation for Twitter
+  auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
+  auth.set_access_token(skey, ssecret)
+  return auth
+#----------------------------------------------------------------
+
+
+#----------------------------------------------------------------
 def report(m, verbose=True):
   if verbose is True:
     print m
@@ -362,7 +377,8 @@ def placemakerGeocodeLatLon(address):
     return False,False
 
 def twSearchNear(tweeters,tags,num,place='mk7 6aa,uk',term='', since='',dist=1):
-  t=int(num/100)
+  t=int(num/100)+1
+  if t>15:t=15
   page=1
   lat,lon=placemakerGeocodeLatLon(place)
   while page<=t:
@@ -394,11 +410,13 @@ def twSearchNear(tweeters,tags,num,place='mk7 6aa,uk',term='', since='',dist=1):
     	    
   return tweeters,tags
 
-def twSearchHashtag(tweeters,tags,num,tag='ukoer', since='',term=''):
-  t=int(num/100)
+def twSearchHashtag(tweeters,tags,num,tag='ukoer', since='',term='',exclRT=False):
+  t=int(num/100)+1
+  if t>15:t=15
   page=1
+  bigdata=[]
   while page<=t:
-    url='http://search.twitter.com/search.json?tag='+tag+'&rpp=100&page='+str(page)+'&q='
+    url='http://search.twitter.com/search.json?tag='+tag+'&rpp=100&page='+str(page)+'&result_type=recent&include_entities=false&q='
     print url
     if term!='':
       url+='+'+urllib.quote_plus(term)
@@ -407,9 +425,10 @@ def twSearchHashtag(tweeters,tags,num,tag='ukoer', since='',term=''):
      url+='+since:'+since
     '''
     page+=1
+    
     data = simplejson.load(urllib.urlopen(url))
     for i in data['results']:
-     if not i['text'].startswith('RT @'):
+     if (exclRT==False) or (exclRT==True and not i['text'].startswith('RT @')):
       u=i['from_user'].strip()
       if u in tweeters:
         tweeters[u]['count']+=1
@@ -423,11 +442,13 @@ def twSearchHashtag(tweeters,tags,num,tag='ukoer', since='',term=''):
     	  tags[tagx]=1
     	else:
     	  tags[tagx]+=1
-    	    
-  return tweeters,tags
+    bigdata.extend(data['results'])    
+  return tweeters,tags,bigdata
 
 def twSearchTerm(tweeters,tags,num,q='ukoer', since='',term=''):
-  t=int(num/100)
+  t=int(num/100)+1
+  if t>15:t=15
+  bigdata=[]
   page=1
   while page<=t:
     url='http://search.twitter.com/search.json?rpp=100&page='+str(page)+'&q='+urllib.quote_plus(q)
@@ -439,8 +460,9 @@ def twSearchTerm(tweeters,tags,num,q='ukoer', since='',term=''):
      url+='+since:'+since
     '''
     page+=1
+    
     data = simplejson.load(urllib.urlopen(url))
-    for i in data['results']:
+    for i in data['results']:     
      if not i['text'].startswith('RT @'):
       u=i['from_user'].strip()
       if u in tweeters:
@@ -455,8 +477,8 @@ def twSearchTerm(tweeters,tags,num,q='ukoer', since='',term=''):
     	  tags[tagx]=1
     	else:
     	  tags[tagx]+=1
-    	    
-  return tweeters,tags
+    bigdata.extend(data['results'])    
+  return tweeters,tags,bigdata
   
 #----------------------------------------------------------------
 def destroyListIfRequired(api,tag):
@@ -512,6 +534,7 @@ def mergeDicts(dicts,x=False):
       merger[i]=d[i]
   return merger
 
+  
 def twNamesFromIds(api,idlist):
   twr={}
   twl=chunks(idlist,99)
@@ -528,6 +551,22 @@ def twNamesFromIds(api,idlist):
       report("Failed lookup...")  
   return twr
 
+def twDetailsFromIds(api,idlist):
+  twr={}
+  twl=chunks(idlist,99)
+  for f100 in twl:
+    report("Hundred batch....")
+    try:
+      twd=api.lookup_users(user_ids=f100)
+      for u in twd:
+        if  type(u) is tweepy.models.User:
+          if u.screen_name != 'none':
+            print u.id,u.screen_name 
+            twr[u.id]=u
+    except:
+      report("Failed lookup...")  
+  return twr
+  
 def twWhois(api,idlist):
   twr={}
   twl=chunks(idlist,99)
@@ -574,19 +613,44 @@ def getTwitterUsersDetailsByIDs(api,users):
       report("Failed lookup...")  
   return twr
   
-def getTwitterFriendsDetailsByIDs(api,user):
-  return getTwitterUserDetailsByIDs(api,user,"friends")
+def getTwitterFriendsDetailsByIDs(api,user,sample='all'):
+  return getTwitterUserDetailsByIDs(api,user,"friends",sample)
 
-def getTwitterFollowersDetailsByIDs(api,user):
-  return getTwitterUserDetailsByIDs(api,user,"followers")
+def getTwitterFollowersDetailsByIDs(api,user,sample='all'):
+  return getTwitterUserDetailsByIDs(api,user,"followers",sample)
 
-def getTwitterUserDetailsByIDs(api,user,typ="friends"):
+def getTwitterUserDetailsByIDs(api,user,typ="friends",sample='all'):
   twr={}
   if typ is 'friends':
-    members=api.friends_ids(user)
+    #members=api.friends_ids(user)
+    #NEED to rewrute downstream to work with iterator?
+    mi=tweepy.Cursor(api.friends_ids,id=user).items()
+    members=[]
+    for m in mi: members.append(m)
+    #hack bugfix - no idea what's going on
+    if isinstance(members,tuple): members,junk=members
   else:
-    members=api.followers_ids(user)    
-  twl=chunks(members,99)
+    try:
+    	#members=api.followers_ids(user)
+    	mi=tweepy.Cursor(api.followers_ids,id=user).items()
+    	members=[]
+    	for m in mi: members.append(m)
+    	if isinstance(members,tuple): members,junk=members
+    except:
+    	members=[]
+    #hack bugfix - no idea what's going on
+    if isinstance(members,tuple): members,junk=members
+    
+  if sample=='all': twl=chunks(members,99)
+  else:
+  	sample=int(sample)
+  	if len(members)>sample:
+  		membersSample=random.sample(members, sample)
+  		print 'Using a random sample of '+str(sample)+' from '+str(len(members))
+  	else:
+  		membersSample=members
+  		print 'Fewer members ('+str(len(members))+') than sample size: '+str(sample) 
+  	twl=chunks(membersSample,99)
   for f100 in twl:
     report("Hundred batch on "+typ+"....")
     try:
@@ -690,16 +754,27 @@ def gephiOutputEdgeDefInner(api,f,members,typ='friends',maxf=4000):
     #danger hack AJH TH - try to minimise long waits for large friend counts
     if typ == 'friends' and int(friend.friends_count)>0 and int(friend.friends_count)<int(maxf):
       try:
-        foafs=api.friends_ids(friend.id)
+        #foafs=api.friends_ids(friend.id)
+        mi=tweepy.Cursor(api.friends_ids,id=friend.id).items()
+        foafs=[]
+        for m in mi: foafs.append(m)
+        #hack bugfix - no idea what's going on
+        if isinstance(foafs,tuple): foafs,junk=foafs
       except tweepy.error.TweepError,e:
         report(e)
     elif typ == 'followers':
       if int(friend.followers_count)>0 and int(friend.followers_count)<int(maxf):
         try:
-          foafs=api.followers_ids(friend.id)
+          #foafs=api.followers_ids(friend.id)
+          mi=tweepy.Cursor(api.followers_ids,id=friend.id).items()
+          foafs=[]
+          for m in mi: foafs.append(m)
+          #hack bugfix - no idea what's going on
+          if isinstance(foafs,tuple): foafs,junk=foafs
         except tweepy.error.TweepError,e:
           report(e)
       else: print 'too many...skipping'
+    #print membersid,'.....',foafs
     cofriends=intersect(membersid,foafs)
     #being naughty - changing .status to record no. of foafs/no. in community
     if hasattr(members[id], 'status'):
@@ -708,7 +783,7 @@ def gephiOutputEdgeDefInner(api,f,members,typ='friends',maxf=4000):
     for foaf in cofriends:
       f.write(str(friend.id)+','+str(foaf)+'\n')
  
-def gephiOutputEdgeDefExtra(api,f,members,typ='friends'):
+def gephiOutputEdgeDefExtra(api,f,members,typ='friends',maxf=100000):
   f.write('edgedef> user VARCHAR,friend VARCHAR\n')
   i=0
   membersid=[]
@@ -720,15 +795,29 @@ def gephiOutputEdgeDefExtra(api,f,members,typ='friends'):
     foafs={}
     report("- finding extra"+typ+" of whatever (friends? followers?) was passed in of "+friend.screen_name)
     if typ =='friends':
-      try:
-        foafs=api.friends_ids(friend.id)
-      except tweepy.error.TweepError,e:
-        report(e)
+      if friend.friends_count>maxf:
+        foafs=[]
+      else:
+        try:
+          #foafs=api.friends_ids(friend.id)
+          mi=tweepy.Cursor(api.friends_ids,id=friend.id).items()
+          foafs=[]
+          for m in mi: foafs.append(m)
+          if isinstance(foafs,tuple): foafs,junk=foafs
+        except tweepy.error.TweepError,e:
+          report(e)
     else:
-      try:
-        foafs=api.followers_ids(friend.id)
-      except tweepy.error.TweepError,e:
-        report(e)
+      if friend.followers_count>maxf:
+        foafs=[]
+      else:
+        try:
+          #foafs=api.followers_ids(friend.id)
+          mi=tweepy.Cursor(api.followers_ids,id=friend.id).items()
+          foafs=[]
+          for m in mi: foafs.append(m)
+          if isinstance(foafs,tuple): foafs,junk=foafs
+        except tweepy.error.TweepError,e:
+          report(e)
     extrafriends=diffset(foafs,membersid)
     #being naughty - changing .status to record no. of foafs/no. in community
     if hasattr(members[id], 'status'):
@@ -737,7 +826,7 @@ def gephiOutputEdgeDefExtra(api,f,members,typ='friends'):
     for foaf in extrafriends:
       f.write(str(friend.id)+','+str(foaf)+'\n')
 
-def gephiOutputEdgeDefOuter(api,f,members,typ='friends',mode='inclusive'):
+def gephiOutputEdgeDefOuter(api,f,members,typ='friends',mode='inclusive',maxf=100000):
   f.write('edgedef> user VARCHAR,friend VARCHAR\n')
   i=0
   membersid=[]
@@ -753,15 +842,28 @@ def gephiOutputEdgeDefOuter(api,f,members,typ='friends',mode='inclusive'):
     report("- finding "+typ+" of whatever (friends? followers?) was passed in of "+friend.screen_name+' ('+Ms+' of '+str(i)+')')
     try:
       if typ is 'friends':
-        try:
-          foafs=api.friends_ids(friend.id)
-        except tweepy.error.TweepError,e:
-          report(e)
+        if friend.friends_count>maxf: foafs=[]
+        else:
+          try:
+            #foafs=api.friends_ids(friend.id)
+            mi=tweepy.Cursor(api.friends_ids,id=friend.id).items()
+            foafs=[]
+            for m in mi: foafs.append(m)
+            if isinstance(foafs,tuple): foafs,junk=foafs
+          except:
+            foafs=[]
       else:
-        try:
-          foafs=api.followers_ids(friend.id)
-        except tweepy.error.TweepError,e:
-          report(e)
+        if friend.followers_count>maxf: foafs=[]
+        else:
+          try:
+            #foafs=api.followers_ids(friend.id)
+            mi=tweepy.Cursor(api.followers_ids,id=friend.id).items()
+            foafs=[]
+            for m in mi: foafs.append(m)
+
+            if isinstance(foafs,tuple): foafs,junk=foafs
+          except:
+            foafs=[]
       #cofriends=intersect(membersid,foafs)
       #being naughty - changing .status to record no. of foafs/no. in community
       #if hasattr(members[id], 'status'):
@@ -789,28 +891,51 @@ def gephiOutputFilePlus(api,dirname, members,membersPlus,typ='innerfriends',fnam
     gephiOutputEdgeDefOuter(api,f,members,'friends')
   elif typ is 'outerfollowers':
     gephiOutputEdgeDefOuter(api,f,members,'followers')
+  elif typ is 'extrafriends':
+    gephiOutputEdgeDefExtra(api,f,members,'friends')
 
   f.close()
   report("...Gephi "+typ+" file generated")
 	
 	
-def gephiOutputFile(api,dirname, members,typ="innerfriends",fname='Net.gdf'):
+def gephiOutputFile(api,dirname, members,typ="innerfriends",fname='Net.gdf',maxf=100000):
   report("Generating Gephi file using: "+typ)
   f=openTimestampedFile(dirname,typ+fname)
   gephiOutputNodeDef(f,members)
   if typ is 'innerfriends':
-    gephiOutputEdgeDefInner(api,f,members,'friends')
+    gephiOutputEdgeDefInner(api,f,members,'friends',maxf=maxf)
   elif typ is 'innerfollowers':
-    gephiOutputEdgeDefInner(api,f,members,'followers')
+    gephiOutputEdgeDefInner(api,f,members,'followers',maxf=maxf)
   elif typ is 'extrafriends':
-    gephiOutputEdgeDefExtra(api,f,members,'friends')
+    gephiOutputEdgeDefExtra(api,f,members,'friends',maxf=maxf)
   elif typ is 'outerfriends':
-    gephiOutputEdgeDefOuter(api,f,members,'friends')
+    gephiOutputEdgeDefOuter(api,f,members,'friends',maxf=maxf)
   elif typ is 'outerfollowers':
-    gephiOutputEdgeDefOuter(api,f,members,'followers')
-
+    gephiOutputEdgeDefOuter(api,f,members,'followers',maxf=maxf)
+  elif typ is 'extrafollowers':
+    gephiOutputEdgeDefExtra(api,f,members,'followers',maxf=maxf)
   f.close()
   report("...Gephi "+typ+" file generated")
+
+def gephiOutputFileByName(api,fname, members,typ="innerfriends",maxf=100000):
+  report("Generating Gephi file using: "+typ)
+  f=open(fname,'wb+')
+  gephiOutputNodeDef(f,members)
+  if typ is 'innerfriends':
+    gephiOutputEdgeDefInner(api,f,members,'friends',maxf=maxf)
+  elif typ is 'innerfollowers':
+    gephiOutputEdgeDefInner(api,f,members,'followers',maxf=maxf)
+  elif typ is 'extrafriends':
+    gephiOutputEdgeDefExtra(api,f,members,'friends',maxf=maxf)
+  elif typ is 'outerfriends':
+    gephiOutputEdgeDefOuter(api,f,members,'friends',maxf=maxf)
+  elif typ is 'outerfollowers':
+    gephiOutputEdgeDefOuter(api,f,members,'followers',maxf=maxf)
+  elif typ is 'extrafollowers':
+    gephiOutputEdgeDefExtra(api,f,members,'followers',maxf=maxf)
+  f.close()
+  report("...Gephi "+typ+" file generated")
+
 
 def report_hashtagsearch(dirname,tweeters,tags):
   report("Generating search summary files")
@@ -890,12 +1015,18 @@ def createNet(api,members,mode='inner',ftyp='friends'):
     report("- finding followers ("+mode+ftyp+") of whatever (friends? followers?) was passed in of "+member.screen_name)
     if ftyp is 'friends':
       try:
-        foafs=api.friends_ids(member.id)
+        #foafs=api.friends_ids(member.id)
+        mi=tweepy.Cursor(api.friends_ids,id=member.id).items()
+        foafs=[]
+        for m in mi: foafs.append(m)
       except tweepy.error.TweepError,e:
         report(e)
     else:
       try:
-        foafs=api.followers_ids(member.id)
+        #foafs=api.followers_ids(member.id)
+        mi=tweepy.Cursor(api.followers_ids,id=member.id).items()
+        foafs=[]
+        for m in mi: foafs.append(m)
       except tweepy.error.TweepError,e:
         report(e)
 
