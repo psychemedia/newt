@@ -1,4 +1,4 @@
-import sys, os, newt, argparse, datetime, csv
+import sys, os, newt, argparse, datetime, csv, random
 import networkx as nx
 import newtx as nwx
 
@@ -23,9 +23,10 @@ api=newt.getTwitterAPI()
 ## python scmvESP.py -user tetley_teafolk -sample 5000 -mindegree 500
 ## python scmvESP.py -user tetley_teafolk -sample 200 -indegree 20 -outdegree 30
 ## python scmvESP.py -hashtag philately -tagsample 500 -tagfilter 5 -mindegree 20
-## python scmvESP.py -searchterm philately -tagsample 5 -tagfilter 5 -mindegree 20
+## python scmvESP.py -searchterm philately -tagsample 500 -tagfilter 5 -mindegree 20
 ## python scmvESP.py -hashtag sherlock -tagsample 1500  -mindegree 75 -projection forward -typ friends
 ## python scmvESP.py -searchterm http://www.johnwatsonblog.co.uk/  -tagsample 500 -tagfilter 1 -mindegree 20 -projection forward -typ friends
+# python scmvESP.py -fromfile ../users.txt  -indegree 15 -outdegree 1 -projection forward -typ friends 
 
 parser = argparse.ArgumentParser(description='Generate social positioning map')
 
@@ -41,6 +42,8 @@ group.add_argument('-hashtag',help='Hashtag for which you want to identify recen
 group.add_argument('-searchterm',nargs='*',help='Searchterm for which you want to identify recent users and then generate their common ESP.')
 
 parser.add_argument('-typ',default='followers',help='Are we going to generate ESP from friends or followers?')
+parser.add_argument('-typ2',default='friends',help='This relates to the second, projection step of the ESP process, and describes whether we project friends or followers of the folk identified by typ')
+
 parser.add_argument('-sample',default=197,type=int,metavar='N',help='Sample the friends/followers (user, users); use 0 if you want all (users/users).')
 parser.add_argument('-tagsample',default=500,type=int,metavar='N',help='For hashtag/searchterm sample, number of recently hashtagged/search term including tweets to search for (hashtag,searchterm)')
 parser.add_argument('-tagfilter',default=2,type=int,metavar='N',help='For hashtag or searchterm sample, number times a person needs to use tag/searchterm to count')
@@ -54,6 +57,7 @@ parser.add_argument('-projection',default='default',help='If you just want to fi
 parser.add_argument('-mindegree',type=int,metavar='N',help='If you want to generate a labelled projection graph, set the minimum degree that nodes in the projection graph must have.')
 #parser.add_argument('-maxdegree',type=int,metavar='N',help='If you want to generate a labelled projection graph, set the maximum degree that nodes in the projection graph must have.')
 parser.add_argument('-indegree',type=int,metavar='N',help='If you want to generate a labelled projection graph, set the minimum in_degree that nodes in the ESP set and not in the projection set must have.')
+parser.add_argument('-indegreemax',type=int,metavar='N',help='If you want to generate a labelled projection graph, set the maximum in_degree that nodes in the ESP set and not in the projection set must have.')
 parser.add_argument('-outdegree',type=int,metavar='N',help='If you want to generate a labelled projection graph, set the minimum out_degree that nodes in the projection set must have.')
 parser.add_argument('-outdegreemax',type=int,metavar='N',help='If you want to generate a labelled projection graph, set the maxiumum out_degree that nodes in the projection set must have.')
 
@@ -133,6 +137,17 @@ def getSourceList(users,typ,sampleSize,filterN):
 	tw={}
 	twc={}
 	twDetails={}
+	print users
+	#we can look up a max of 100 users...
+	#TO DO / HACK just sample 100 for now, if required...?
+	if len(users)>100:
+  		users=random.sample(users, 100)
+  		print 'HACK FUDGE, only using 100 users:',users
+	twd=api.lookup_users(screen_names=users)
+	for u in twd:
+		if  type(u) is newt.tweepy.models.User:
+			twc[u.screen_name]=filterN
+			twDetails[u.screen_name]=u
 	if sampleSize==0: sampleSize='all'
 	for user in users:
 		print "Getting ",typ," of ",user
@@ -162,15 +177,30 @@ def getFriendsProjection(tw={},maxf=5000):
 	newt.gephiOutputFileByName(api,projname+'/'+args.typ+'_extrafriends.gdf', tw,'extrafriends',maxf=maxf)
 	newt.gephiOutputFileByName(api,projname+'/'+args.typ+'_outerfriends.gdf', tw,'outerfriends',maxf=maxf)
 
+def getFollowersProjection(tw={},maxf=5000):
+	newt.gephiOutputFileByName(api,projname+'/'+args.typ+'_innerfollowers.gdf', tw,'followers',maxf=maxf)
+	newt.gephiOutputFileByName(api,projname+'/'+args.typ+'_extrafollowers.gdf', tw,'extrafollowers',maxf=maxf)
+	newt.gephiOutputFileByName(api,projname+'/'+args.typ+'_outerfollowers.gdf', tw,'outerfollowers',maxf=maxf)
+
 	
 def labelGraph(LG,idlist):
 	idlabels=newt.twDetailsFromIds(api,idlist)
+	#There is going to be a clash on this filename:-(
+	f=open(projname+'/idnames.txt','wb+')
+	cf=csv.writer(f)
+	cf.writerow(['id','username','desc'])
 	for id in idlabels:
 		if str(id) in LG.node:
 			LG.node[str(id)]['label']=idlabels[id].screen_name
 			LG.node[str(id)]['fo_count']=idlabels[id].followers_count
 			LG.node[str(id)]['fr_count']=idlabels[id].friends_count
 			LG.node[str(id)]['updates']=idlabels[id].statuses_count
+			desc=idlabels[id].description
+			if desc !=None:
+				desc=desc.encode('ascii','ignore')
+			#LG.node[str(id)]['descr']=desc
+			#print LG.node[str(id)]['desc']
+			cf.writerow([id,idlabels[id].screen_name,desc])
 			LG.node[str(id)]['indegree']=LG.in_degree(str(id))
 			if idlabels[id].followers_count>0:
 				LG.node[str(id)]['fo_prop']=1.0*LG.in_degree(str(id))/idlabels[id].followers_count
@@ -182,9 +212,10 @@ def labelGraph(LG,idlist):
 			LG.node[str(id)]['desc']=idlabels[id].description
 			'''	
 			#print LG.node[str(id)]
+	f.close()
 	return LG
 
-def filterNet(DG,mindegree,indegree,outdegree,outdegreemax,typ,addUserFriendships,user):
+def filterNet(DG,mindegree,indegree,outdegree,outdegreemax,typ,addUserFriendships,user,indegreemax):
 	#need to tweak this to allow filtering by in and out degree?
 	if addUserFriendships==1:
 		DG=addFocus(DG,user,typ)
@@ -268,7 +299,7 @@ def addFocus(DG,user,typ='all'):
 def filterProjFile(projname,args):
 	#As we know the filenames, we can now easily run gdfFilter type analyses
 	#Use the file route because it provides an audit trail...
-	typ=args.typ+'_outerfriends'
+	typ=args.typ+'_outer'+args.typ2
 	fn='/'.join([projname,typ+'.gdf'])
 	print 'Loading file...',fn
 	DG=nwx.directedNetworkFromGDF(fn)
@@ -277,8 +308,8 @@ def filterProjFile(projname,args):
 	addUserFriendships=0
 	user=''
 	#use an incluser flag to include fr/fo relations of user(s)?
-	if args.mindegree!=None or args.indegree!=None or args.outdegree!=None:
-		filterNet(DG,args.mindegree,args.indegree,args.outdegree,args.outdegreemax,typ,addUserFriendships,user)
+	if args.mindegree!=None or args.indegree!=None or args.outdegree!=None or args.outdegreemax!=None or  args.indegreemax!=None:
+		filterNet(DG,args.mindegree,args.indegree,args.outdegree,args.outdegreemax,typ,addUserFriendships,user,args.outdegreemax)
 
 
 #does py have a switch statement?
@@ -351,7 +382,11 @@ if args.filterfile==None:
 		f.write(str(tweep)+'\n')
 	f.close()
 
-	getFriendsProjection(tw)
+	if args.typ2!='followers':
+		args.typ2='friends'
+		getFriendsProjection(tw)
+	else:
+		getFollowersProjection(tw)
 	if args.mindegree!=None or args.indegree!=None or args.outdegree!=None or args.outdegreemax!=None:
 		filterProjFile(projname,args)
 else:
