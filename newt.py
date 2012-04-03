@@ -445,7 +445,7 @@ def twSearchHashtag(tweeters,tags,num,tag='ukoer', since='',term='',exclRT=False
     bigdata.extend(data['results'])    
   return tweeters,tags,bigdata
 
-def twSearchTerm(tweeters,tags,num,q='ukoer', since='',term=''):
+def twSearchTerm(tweeters,tags,num,q='ukoer', since='',term='',exclRT=False):
   t=int(num/100)+1
   if t>15:t=15
   bigdata=[]
@@ -463,7 +463,7 @@ def twSearchTerm(tweeters,tags,num,q='ukoer', since='',term=''):
     
     data = simplejson.load(urllib.urlopen(url))
     for i in data['results']:     
-     if not i['text'].startswith('RT @'):
+     if (exclRT==False) or (exclRT==True and not i['text'].startswith('RT @')):
       u=i['from_user'].strip()
       if u in tweeters:
         tweeters[u]['count']+=1

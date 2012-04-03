@@ -28,6 +28,9 @@ api=newt.getTwitterAPI()
 ## python scmvESP.py -searchterm http://www.johnwatsonblog.co.uk/  -tagsample 500 -tagfilter 1 -mindegree 20 -projection forward -typ friends
 # python scmvESP.py -fromfile ../users.txt  -indegree 15 -outdegree 1 -projection forward -typ friends 
 
+#python scmvESP.py -users actiononhearing deafaction deafnessuk hearinglink -filter 2  -sample 500  -typ followers -outdegree 10 -indegree 10 
+
+
 parser = argparse.ArgumentParser(description='Generate social positioning map')
 
 group = parser.add_mutually_exclusive_group()
@@ -35,6 +38,7 @@ group.add_argument('-user',help='Name of a user (without the @) for whom you wan
 group.add_argument('-users',nargs='*', help="A space separated list of usernames (without the @) for whom you want to generate their common ESP.")
 group.add_argument('-fromfile',help='Name of a simple text file from which to enter a list of usernames (without the @) for whom you want to generate their common ESP.')
 group.add_argument('-filterfile',help='Run a network filter on a project file.')
+group.add_argument('-list',help='Grab users from a list. Provide source as: username/listname #IN TESTING')
 
 #NOTE - the newt hashtag code allows us to exclude RTs; at the moment, the default to not exclude hashtaggers is used;
 ## TODO add in an argument to allow this to be controlled
@@ -96,7 +100,7 @@ def getGenericSearchUsers(tag,num,limit,projname,styp="tag"):
 		tweeters,tags,tweets=newt.twSearchHashtag(tweeters,tags,num, tag,exclRT=False)
 	else: #styp=='term'
 		print 'Looking for twitterers and tags in context of searchterm',tag
-		tweeters,tags,tweets=newt.twSearchTerm(tweeters,tags,num, tag)
+		tweeters,tags,tweets=newt.twSearchTerm(tweeters,tags,num, tag,exclRT=False)
 		#newt.report_hashtagsearch('searchterm-'+qtag,tweeters,tags)
 
 	fo=open(projname+'/tweets.txt','wb+')
@@ -311,6 +315,16 @@ def filterProjFile(projname,args):
 	if args.mindegree!=None or args.indegree!=None or args.outdegree!=None or args.outdegreemax!=None or  args.indegreemax!=None:
 		filterNet(DG,args.mindegree,args.indegree,args.outdegree,args.outdegreemax,typ,addUserFriendships,user,args.outdegreemax)
 
+def getUsersFromList(userList):
+	userList_l =userList.split('/')
+	user=userList_l[0]
+	list=userList_l[1]
+	tmp=newt.listDetailsByScreenName({},api.list_members,user,list)
+	u=[]
+	for i in tw:
+		u.append(tmp[i].screen_name)
+	return u
+  
 
 #does py have a switch statement?
 
@@ -350,6 +364,11 @@ elif args.searchterm!=None:
 	print users
 	if args.projection=='default':
 		args.projection=='false'
+elif args.list!=None:
+	print 'TO DO'
+	users=getUsersFromList(args.list)
+	#print users
+	exit(-1)
 
 if users!=[]:
 	tw=newt.getTwitterUsersDetailsByScreenNames(api,users)
@@ -360,6 +379,7 @@ if args.filterfile!=None:
 	projname=args.filterfile
 logger(projname,args)
 
+print "Projection status is:",args.projection
 if args.projection=='forward':
 	#The getFriendsProjection doesn't use sample but does max out...
 	args.sample=''
