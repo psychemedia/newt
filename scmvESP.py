@@ -2,6 +2,7 @@ import sys, os, newt, argparse, datetime, csv, random
 import networkx as nx
 import newtx as nwx
 
+import urllib
 #to do
 #when doing eg hashtag search, need to be able to use original tagger list with differet filter arg
 # ie print a 'try this' command to cope with different filter val. Requires new code block?
@@ -20,14 +21,17 @@ api=newt.getTwitterAPI()
 #user settings
 #Examples:
 ## python scmvESP.py -filterfile reports/scmvESP/scmvESP_2011-12-17-20-38-50 -indegree 5 -outdegree 30 -outdegreemax 500
+#python scmvESP.py -searchterm allotment veg OR fruit OR garden -tagsample 500 -outdegree 50  -indegree 20 -projection forward -typ friends -tagfilter 1
+
 ## python scmvESP.py -user tetley_teafolk -sample 5000 -mindegree 500
 ## python scmvESP.py -user tetley_teafolk -sample 200 -indegree 20 -outdegree 30
 ## python scmvESP.py -hashtag philately -tagsample 500 -tagfilter 5 -mindegree 20
 ## python scmvESP.py -searchterm philately -tagsample 500 -tagfilter 5 -mindegree 20
-## python scmvESP.py -hashtag sherlock -tagsample 1500  -mindegree 75 -projection forward -typ friends
-## python scmvESP.py -searchterm http://www.johnwatsonblog.co.uk/  -tagsample 500 -tagfilter 1 -mindegree 20 -projection forward -typ friends
-# python scmvESP.py -fromfile ../users.txt  -indegree 15 -outdegree 1 -projection forward -typ friends 
-
+## python scmvESP.py -hashtag sherlock -tagsample 1500  -mindegree 75 -projection forward
+## python scmvESP.py -searchterm http://www.johnwatsonblog.co.uk/  -tagsample 500 -tagfilter 1 -mindegree 20 -projection forward 
+# python scmvESP.py -fromfile ../users.txt  -indegree 15 -outdegree 1 -projection forward 
+# python scmvESP.py -fromfile ../users.txt  -indegree 15 -outdegree 1 -projection forward -filter 10
+# python scmvESP.py -list emercoleman/cstwitter -indegree 15 -outdegree 1 -projection forward
 #python scmvESP.py -users actiononhearing deafaction deafnessuk hearinglink -filter 2  -sample 500  -typ followers -outdegree 10 -indegree 10 
 
 
@@ -49,6 +53,8 @@ parser.add_argument('-typ',default='followers',help='Are we going to generate ES
 parser.add_argument('-typ2',default='friends',help='This relates to the second, projection step of the ESP process, and describes whether we project friends or followers of the folk identified by typ')
 
 parser.add_argument('-sample',default=197,type=int,metavar='N',help='Sample the friends/followers (user, users); use 0 if you want all (users/users).')
+parser.add_argument('-sample2',default=-1,type=int,metavar='N',help='Sample the friends/followers (user, users) for forward projection')
+
 parser.add_argument('-tagsample',default=500,type=int,metavar='N',help='For hashtag/searchterm sample, number of recently hashtagged/search term including tweets to search for (hashtag,searchterm)')
 parser.add_argument('-tagfilter',default=2,type=int,metavar='N',help='For hashtag or searchterm sample, number times a person needs to use tag/searchterm to count')
 
@@ -76,6 +82,7 @@ def logger(fname,args):
 	logger.writerow([fname,repr(args)])
 	flog.close()
 
+def ascii(s): return "".join(i for i in s if ord(i)<128)
 
 def getTimeStampedProjDirName(path,stub):
 	now = datetime.datetime.now()
@@ -85,6 +92,7 @@ def getTimeStampedProjDirName(path,stub):
 checkDir('reports')
 checkDir('reports/scmvESP')
 
+fpf=''
 
 def getSearchtermUsers(searchterm,num,limit,projname):
 	return getGenericSearchUsers(searchterm,num,limit,projname,"term")
@@ -186,6 +194,16 @@ def getFollowersProjection(tw={},maxf=5000):
 	newt.gephiOutputFileByName(api,projname+'/'+args.typ+'_extrafollowers.gdf', tw,'extrafollowers',maxf=maxf)
 	newt.gephiOutputFileByName(api,projname+'/'+args.typ+'_outerfollowers.gdf', tw,'outerfollowers',maxf=maxf)
 
+def getFriendsView(tw={},maxf=5000):
+	newt.gephiOutputFileByName(api,projname+'/innerfriends.gdf', tw,maxf=maxf)
+	newt.gephiOutputFileByName(api,projname+'/extrafriends.gdf', tw,'extrafriends',maxf=maxf)
+	newt.gephiOutputFileByName(api,projname+'/outerfriends.gdf', tw,'outerfriends',maxf=maxf)
+
+def getFollowersView(tw={},maxf=5000):
+	newt.gephiOutputFileByName(api,projname+'/innerfollowers.gdf', tw,'followers',maxf=maxf)
+	newt.gephiOutputFileByName(api,projname+'/extrafollowers.gdf', tw,'extrafollowers',maxf=maxf)
+	newt.gephiOutputFileByName(api,projname+'/outerfollowers.gdf', tw,'outerfollowers',maxf=maxf)
+
 	
 def labelGraph(LG,idlist):
 	idlabels=newt.twDetailsFromIds(api,idlist)
@@ -214,12 +232,14 @@ def labelGraph(LG,idlist):
 			'''
 			LG.node[str(id)]['location']=idlabels[id].location
 			LG.node[str(id)]['desc']=idlabels[id].description
-			'''	
+			'''
+			LG.node[str(id)]['desc']=ascii(idlabels[id].description)
 			#print LG.node[str(id)]
 	f.close()
 	return LG
 
 def filterNet(DG,mindegree,indegree,outdegree,outdegreemax,typ,addUserFriendships,user,indegreemax):
+	print 'In filterNet'
 	#need to tweak this to allow filtering by in and out degree?
 	if addUserFriendships==1:
 		DG=addFocus(DG,user,typ)
@@ -260,7 +280,9 @@ def filterNet(DG,mindegree,indegree,outdegree,outdegreemax,typ,addUserFriendship
 	st='/'.join([projname,typ+'degree_'+tm+'_'+ti+'_'+to+'_'+tom+"_esp"])
 	nx.write_graphml(L, st+".graphml")
 	nx.write_edgelist(L, st+".txt",data=False)
-	
+	fpf=st+'.graphml'
+	return fpf
+		
 	'''
 	#delimiter=''
 
@@ -303,6 +325,7 @@ def addFocus(DG,user,typ='all'):
 def filterProjFile(projname,args):
 	#As we know the filenames, we can now easily run gdfFilter type analyses
 	#Use the file route because it provides an audit trail...
+	print 'In filterProjFile'
 	typ=args.typ+'_outer'+args.typ2
 	fn='/'.join([projname,typ+'.gdf'])
 	print 'Loading file...',fn
@@ -313,7 +336,25 @@ def filterProjFile(projname,args):
 	user=''
 	#use an incluser flag to include fr/fo relations of user(s)?
 	if args.mindegree!=None or args.indegree!=None or args.outdegree!=None or args.outdegreemax!=None or  args.indegreemax!=None:
-		filterNet(DG,args.mindegree,args.indegree,args.outdegree,args.outdegreemax,typ,addUserFriendships,user,args.outdegreemax)
+		fpf=filterNet(DG,args.mindegree,args.indegree,args.outdegree,args.outdegreemax,typ,addUserFriendships,user,args.outdegreemax)
+	return fpf
+
+def filterProjFile2(projname,ftyp='outerfriends'):
+	typ=ftyp.replace('outer','')
+	#As we know the filenames, we can now easily run gdfFilter type analyses
+	#Use the file route because it provides an audit trail...
+	#typ=args.typ+'_outer'+args.typ2
+	fn='/'.join([projname,ftyp+'.gdf'])
+	print 'Loading file...',fn
+	DG=nwx.directedNetworkFromGDF(fn)
+	print DG.order(),DG.size()
+
+	addUserFriendships=0
+	user=''
+	#use an incluser flag to include fr/fo relations of user(s)?
+	if args.mindegree!=None or args.indegree!=None or args.outdegree!=None or args.outdegreemax!=None or  args.indegreemax!=None:
+		fpf=filterNet(DG,args.mindegree,args.indegree,args.outdegree,args.outdegreemax,typ,addUserFriendships,user,args.outdegreemax)
+	return fpf
 
 def getUsersFromList(userList):
 	userList_l =userList.split('/')
@@ -321,7 +362,7 @@ def getUsersFromList(userList):
 	list=userList_l[1]
 	tmp=newt.listDetailsByScreenName({},api.list_members,user,list)
 	u=[]
-	for i in tw:
+	for i in tmp:
 		u.append(tmp[i].screen_name)
 	return u
   
@@ -360,15 +401,16 @@ elif args.hashtag!=None:
 		args.projection=='false'
 elif args.searchterm!=None:
 	searchterm=' '.join(args.searchterm)
+	#searchterm=urllib.quote(searchterm)
 	users=getSearchtermUsers(searchterm,args.tagsample,args.tagfilter,projname)
 	print users
 	if args.projection=='default':
 		args.projection=='false'
 elif args.list!=None:
-	print 'TO DO'
 	users=getUsersFromList(args.list)
-	#print users
-	exit(-1)
+	if args.projection=='default':
+		args.projection=='false'
+
 
 if users!=[]:
 	tw=newt.getTwitterUsersDetailsByScreenNames(api,users)
@@ -383,11 +425,23 @@ print "Projection status is:",args.projection
 if args.projection=='forward':
 	#The getFriendsProjection doesn't use sample but does max out...
 	args.sample=''
-	getFriendsProjection(tw)
+	if args.filterfile==None:
+		getFriendsView(tw)
 	if args.mindegree!=None or args.indegree!=None or args.outdegree!=None or args.outdegreemax!=None:
-		filterProjFile(projname,args)
+		fpf=filterProjFile2(projname)
 	print "Stopping after forward projection; root call is:"
-	print "python scmvESP.py -filterfile "+projname+' -typ '+args.typ
+	print "python scmvESP.py -filterfile "+projname +' -projection '+ args.projection
+	print "Also guessing at [TO DO]:"
+	print "python scmvGraphCompare.py -compare false -outpath "+projname+" -files "+fpf+" -labels testX"
+	exit(-1)
+elif args.projection=='backward':
+	#The getFriendsProjection doesn't use sample but does max out...
+	args.sample=''
+	getFollowersView(tw)
+	if args.mindegree!=None or args.indegree!=None or args.outdegree!=None or args.outdegreemax!=None:
+		filterProjFile2(projname,'outerfollowers')
+	print "Stopping after backward projection; root call is:"
+	print "python scmvESP.py -filterfile "+projname +' -projection '+ args.projection
 	exit(-1)
 elif args.projection=='false':
 	print "As requested, stopping before projection routines"
@@ -404,19 +458,23 @@ if args.filterfile==None:
 
 	if args.typ2!='followers':
 		args.typ2='friends'
-		getFriendsProjection(tw)
+		if args.sample2>=0:
+			getFriendsProjection(tw,args.sample2)
+		else: getFriendsProjection(tw)
 	else:
 		getFollowersProjection(tw)
 	if args.mindegree!=None or args.indegree!=None or args.outdegree!=None or args.outdegreemax!=None:
-		filterProjFile(projname,args)
+		fpf=filterProjFile(projname,args)
 else:
 	if args.mindegree!=None or args.indegree!=None or args.outdegree!=None or args.outdegreemax!=None:
 		projname=args.filterfile
-		filterProjFile(projname,args)
+		fpf=filterProjFile(projname,args)
 	
 print "To run another filter over this data, use:"
 print "python scmvESP.py -filterfile "+projname+' -typ '+args.typ
 print "with -indegree, -mindegree, -outdegree args as required"
 
+print "Also guessing at [TO DO]:"
+print "python scmvGraphCompare.py -compare false -outpath "+projname+" -files "+fpf+" -labels testX"
 
 
