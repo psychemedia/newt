@@ -397,7 +397,43 @@ def placemakerGeocodeLatLon(address):
   else:
     return False,False
 
-def twSearchNear(tweeters,tags,num,place='mk7 6aa,uk',term='', since='',dist=1):
+def twSearchNear(tweeters,tags,num,place='mk7 6aa,uk',term='', dist=1,exclRT=False):
+  t=int(num/100)+1
+  if t>15:t=15
+  bigdata=[]
+  page=1
+  lat,lon=placemakerGeocodeLatLon(place)
+  while page<=t:
+    #url='http://search.twitter.com/search.json?rpp=100&page='+str(page)+'&q='+urllib.quote_plus(q)
+    url='http://search.twitter.com/search.json?geocode='+str(lat)+'%2C'+str(lon)+'%2C'+str(1.0*dist)+'km&rpp=100&page='+str(page)+'&q=''within%3A'+str(dist)+'km'
+    print url
+    if term!='':
+      url+='+'+urllib.quote_plus(term)
+    '''
+    if since!='':
+     url+='+since:'+since
+    '''
+    page+=1
+    
+    data = simplejson.load(urllib.urlopen(url))
+    for i in data['results']:     
+     if (exclRT==False) or (exclRT==True and not i['text'].startswith('RT @')):
+      u=i['from_user'].strip()
+      if u in tweeters:
+        tweeters[u]['count']+=1
+      else:
+        report("New user: "+u)
+        tweeters[u]={}
+        tweeters[u]['count']=1
+      ttags=re.findall("#([a-z0-9]+)", i['text'], re.I)
+      for tagx in ttags:
+        if tagx not in tags:
+    	  tags[tagx]=1
+    	else:
+    	  tags[tagx]+=1
+    bigdata.extend(data['results'])    
+  return tweeters,tags,bigdata
+  '''
   t=int(num/100)+1
   if t>15:t=15
   page=1
@@ -407,10 +443,9 @@ def twSearchNear(tweeters,tags,num,place='mk7 6aa,uk',term='', since='',dist=1):
     print url
     if term!='':
       url+='+'+urllib.quote_plus(term)
-    '''
-    if since!='':
-     url+='+since:'+since
-    '''
+
+    #if since!='':
+    # url+='+since:'+since
     page+=1
     data = simplejson.load(urllib.urlopen(url))
     for i in data['results']:
@@ -430,6 +465,7 @@ def twSearchNear(tweeters,tags,num,place='mk7 6aa,uk',term='', since='',dist=1):
     	  tags[tag]+=1
     	    
   return tweeters,tags
+'''
 
 def twSearchHashtag(tweeters,tags,num,tag='ukoer', since='',term='',exclRT=False):
   t=int(num/100)+1

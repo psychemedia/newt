@@ -33,7 +33,7 @@ api=newt.getTwitterAPI()
 # python scmvESP.py -fromfile ../users.txt  -indegree 15 -outdegree 1 -projection forward -filter 10
 # python scmvESP.py -list emercoleman/cstwitter -indegree 15 -outdegree 1 -projection forward
 #python scmvESP.py -users actiononhearing deafaction deafnessuk hearinglink -filter 2  -sample 500  -typ followers -outdegree 10 -indegree 10 
-
+#python scmvESP.py -searchterm anti bullying  -tagsample 500 -tagfilter 1 -outdegree 20 -indegree 20 -projection forward -fname anti_bullying -location milton keynes -dist 500 -fname geoMK500_anti_bulliying
 
 parser = argparse.ArgumentParser(description='Generate social positioning map')
 
@@ -46,11 +46,13 @@ group.add_argument('-users',nargs='*', help="A space separated list of usernames
 group.add_argument('-fromfile',help='Name of a simple text file from which to enter a list of usernames (without the @) for whom you want to generate their common ESP.')
 group.add_argument('-filterfile',help='Run a network filter on a project file.')
 group.add_argument('-list',help='Grab users from a list. Provide source as: username/listname #IN TESTING')
-
 #NOTE - the newt hashtag code allows us to exclude RTs; at the moment, the default to not exclude hashtaggers is used;
 ## TODO add in an argument to allow this to be controlled
 group.add_argument('-hashtag',help='Hashtag for which you want to identify recent users and then generate their common ESP.')
 group.add_argument('-searchterm',nargs='*',help='Searchterm for which you want to identify recent users and then generate their common ESP.')
+
+parser.add_argument('-location',nargs='*',help="Search location")
+parser.add_argument('-dist',type=float,help='Location search distance')
 
 parser.add_argument('-typ',default='followers',help='Are we going to generate ESP from friends or followers?')
 parser.add_argument('-typ2',default='friends',help='This relates to the second, projection step of the ESP process, and describes whether we project friends or followers of the folk identified by typ')
@@ -97,18 +99,22 @@ checkDir('reports/scmvESP')
 
 fpf=''
 
-def getSearchtermUsers(searchterm,num,limit,projname):
-	return getGenericSearchUsers(searchterm,num,limit,projname,"term")
+def getSearchtermUsers(searchterm,num,limit,projname,location='',dist=''):
+	if location!='': term='locterm'
+	else: term='term'
+	return getGenericSearchUsers(searchterm,num,limit,projname,term,location,dist)
 	
 def getHashtagUsers(tag,num,limit,projname):
 	return getGenericSearchUsers(tag,num,limit,projname,"tag")
 
-def getGenericSearchUsers(tag,num,limit,projname,styp="tag"):
+def getGenericSearchUsers(tag,num,limit,projname,styp="tag",location='',dist=''):
 	tweeters={}
 	tags={}
 	if styp=='tag':
 		print 'Looking for twitterers and tags in context of hashtag',tag
 		tweeters,tags,tweets=newt.twSearchHashtag(tweeters,tags,num, tag,exclRT=False)
+	elif styp=='locterm':
+		tweeters,tags,tweets=newt.twSearchNear(tweeters,tags,num, location, tag, dist=float(dist),exclRT=False)
 	else: #styp=='term'
 		print 'Looking for twitterers and tags in context of searchterm',tag
 		tweeters,tags,tweets=newt.twSearchTerm(tweeters,tags,num, tag,exclRT=False)
@@ -407,7 +413,12 @@ elif args.hashtag!=None:
 elif args.searchterm!=None:
 	searchterm=' '.join(args.searchterm)
 	#searchterm=urllib.quote(searchterm)
-	users=getSearchtermUsers(searchterm,args.tagsample,args.tagfilter,projname)
+	loc=''
+	dist=50.0
+	if args.location!=None:
+		loc=' '.join(args.location)
+		if args.dist!=None: dist=args.dist
+	users=getSearchtermUsers(searchterm,args.tagsample,args.tagfilter,projname,loc,dist)
 	print users
 	if args.projection=='default':
 		args.projection=='false'
