@@ -11,6 +11,8 @@ parser.add_argument('-labels',nargs='*',help='Labels in same order as gdf files 
 
 parser.add_argument('-outpath',help='Filename path for output files')
 
+parser.add_argument('-compare',help='If there is a common prefix in the file paths add it here')
+
 args=parser.parse_args()
 if len(args.files)!=len(args.labels): exit(-1)
 
@@ -71,7 +73,7 @@ for user in inUsers:
 	
 data={}
 for graph in graphs:
-	print "outnodecount",graphs[graph]['outnodecount']
+	print "outnodecount",graphs[graph]['outnodecount'],
 	data[graph]=set(graphs[graph]['inNodes'])
 	DG=graphs[graph]['graph']
 	f,writer=getCountsCSVwriter(path,graph)
@@ -83,6 +85,7 @@ for graph in graphs:
 		writer.writerow([node,DG.node[node]['label'],DG.in_degree(node),DG.out_degree(node),float(DG.in_degree(node))/float(graphs[graph]['outnodecount'])])
 	f.close()
 
+if args.compare=='false':exit(-1)
 
 #based on O'reilly Mining Social Web p. 157
 #intersection=set()
