@@ -6,13 +6,13 @@ import itertools
 import xml.sax.saxutils as saxutils
 from urlparse import urlparse
 import networkx as nx
-import privatebits,backtype
-import unicodedata
+import privatebits
+#import backtype
 #----------------------------------------------------------------
 
-def getBackTypeKey():
-  key=privatebits.getBackTypeKey()
-  return key
+#def getBackTypeKey():
+#  key=privatebits.getBackTypeKey()
+#  return key
 
 def getBitlyKey():
   bu,bkey=privatebits.getBitlyKey()

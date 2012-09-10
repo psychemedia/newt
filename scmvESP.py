@@ -37,6 +37,9 @@ api=newt.getTwitterAPI()
 
 parser = argparse.ArgumentParser(description='Generate social positioning map')
 
+parser.add_argument('-fname',default='scmvESP',help='Custom folder name')
+
+
 group = parser.add_mutually_exclusive_group()
 group.add_argument('-user',help='Name of a user (without the @) for whom you want to generate their ESP.')
 group.add_argument('-users',nargs='*', help="A space separated list of usernames (without the @) for whom you want to generate their common ESP.")
@@ -370,7 +373,9 @@ def getUsersFromList(userList):
 #does py have a switch statement?
 
 if args.filterfile==None:
-	projname=getTimeStampedProjDirName('reports/scmvESP','scmvESP')
+	if args.fname=='scmvESP':
+		projname=getTimeStampedProjDirName('reports/scmvESP','scmvESP')
+	else: projname= 'reports/scmvESP/'+args.fname
 	checkDir(projname)
 
 	f=open(projname+'/settings.txt','wb+')
