@@ -94,6 +94,11 @@ def getTimeStampedProjDirName(path,stub):
 	ts = now.strftime("_%Y-%m-%d-%H-%M-%S")
 	return path+'/'+stub+ts
 
+def nowTime():
+	now = datetime.datetime.now()
+	ts = now.strftime("_%Y-%m-%d-%H-%M-%S")
+	return ts
+	
 checkDir('reports')
 checkDir('reports/scmvESP')
 
@@ -381,7 +386,7 @@ def getUsersFromList(userList):
 if args.filterfile==None:
 	if args.fname=='scmvESP':
 		projname=getTimeStampedProjDirName('reports/scmvESP','scmvESP')
-	else: projname= 'reports/scmvESP/'+args.fname
+	else: projname= 'reports/scmvESP/'+args.fname+'/'+nowTime()
 	checkDir(projname)
 
 	f=open(projname+'/settings.txt','wb+')
