@@ -8,8 +8,22 @@ from urlparse import urlparse
 import networkx as nx
 import privatebits,backtype
 import unicodedata
+import sqlite3
 #----------------------------------------------------------------
 
+#--- sqlite database handling
+def getdb():
+	return sqlite3.connect('newt.db')
+
+def getdbc():
+	db=getdb()
+	return db.cursor()
+	
+#tables: frfo,user,tweet
+#dbc.execute('CREATE TABLE frfo (`from` int, `to` int, `type` text)')
+#dbc.execute('CREATE TABLE user ( `id` int, `screen_name` text,`desc` text,`location` text)')
+#dbc.execute('CREATE TABLE tweet ( `id` int, `from' int, `text` text,`date` date)')
+#=======
 def getBackTypeKey():
   key=privatebits.getBackTypeKey()
   return key
