@@ -24,15 +24,10 @@ def getdbc():
 #dbc.execute('CREATE TABLE frfo (`from` int, `to` int, `type` text)')
 #dbc.execute('CREATE TABLE user ( `id` int, `screen_name` text,`desc` text,`location` text)')
 #dbc.execute('CREATE TABLE tweet ( `id` int, `from' int, `text` text,`date` date)')
-#=======
-def getBackTypeKey():
-  key=privatebits.getBackTypeKey()
-  return key
-=======
 
-#import backtype
 #----------------------------------------------------------------
 
+#import backtype
 #def getBackTypeKey():
 #  key=privatebits.getBackTypeKey()
 #  return key
