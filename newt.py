@@ -6,6 +6,7 @@ import itertools
 import xml.sax.saxutils as saxutils
 from urlparse import urlparse
 import networkx as nx
+<<<<<<< HEAD
 import privatebits,backtype
 import unicodedata
 import sqlite3
@@ -27,6 +28,15 @@ def getdbc():
 def getBackTypeKey():
   key=privatebits.getBackTypeKey()
   return key
+=======
+import privatebits
+#import backtype
+#----------------------------------------------------------------
+
+#def getBackTypeKey():
+#  key=privatebits.getBackTypeKey()
+#  return key
+>>>>>>> e22cdf7d6c0026aa67ce1885f86b1f54cedef1bb
 
 def getBitlyKey():
   bu,bkey=privatebits.getBitlyKey()

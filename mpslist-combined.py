@@ -39,8 +39,8 @@ def doGroup(group,tw,tw2):
 affiliations=["parliament","financialtimes","otherukmedia","skynews","telegraph","theindependent","channel4news","guardian","bbc","ukgovernmentdepartments","others","conservatives","labour","libdems"]
 label='govtweeps'
 
-affiliations=["others","conservatives","labour","libdems"]
-label='ukmps'
+#affiliations=["others","conservatives","labour","libdems"]
+#label='ukmps'
 
 for aff in affiliations:
   tw,tw2=doGroup(aff,tw,tw2)
