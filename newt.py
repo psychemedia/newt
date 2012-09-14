@@ -266,7 +266,7 @@ def getTwapperkeeperArchiveTweeters(tweeters,tag,start,end,type='hashtag'):
 #----------------------------------------------------------------
 
 #----------------------------------------------------------------
-def getTwitterAPI(cachetime=36000):
+def getTwitterAPI(cachetime=360000):
   #----------------------------------------------------------------
   #API settings for Twitter
   consumer_key,consumer_secret,skey,ssecret=getTwitterKeys()

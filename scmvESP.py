@@ -46,6 +46,8 @@ group.add_argument('-users',nargs='*', help="A space separated list of usernames
 group.add_argument('-fromfile',help='Name of a simple text file from which to enter a list of usernames (without the @) for whom you want to generate their common ESP.')
 group.add_argument('-filterfile',help='Run a network filter on a project file.')
 group.add_argument('-list',help='Grab users from a list. Provide source as: username/listname #IN TESTING')
+group.add_argument('-lists',nargs='*',help='Grab users from a list. Provide source as: username/listname #IN TESTING')
+
 #NOTE - the newt hashtag code allows us to exclude RTs; at the moment, the default to not exclude hashtaggers is used;
 ## TODO add in an argument to allow this to be controlled
 group.add_argument('-hashtag',help='Hashtag for which you want to identify recent users and then generate their common ESP.')
@@ -67,6 +69,8 @@ parser.add_argument('-filter',default=0,type=int,metavar='N',help='For use with 
 
 parser.add_argument('-projection',default='default',help='If you just want to find the innerfriends of friends/followers, and not the projection, set this false.')
 
+parser.add_argument('-halt',help='Halt after innerfriends.')
+
 
 #At the moment, mindegree dominates indegree and outdegree. Need to set exclusion rules accordingly
 parser.add_argument('-mindegree',type=int,metavar='N',help='If you want to generate a labelled projection graph, set the minimum degree that nodes in the projection graph must have.')
@@ -87,8 +91,10 @@ def logger(fname,args):
 	logger.writerow([fname,repr(args)])
 	flog.close()
 
-def ascii(s): return "".join(i for i in s if ord(i)<128)
-
+def ascii(s):
+	if s!=None: return "".join(i for i in s if ord(i)<128)
+	else: return ''
+	
 def getTimeStampedProjDirName(path,stub):
 	now = datetime.datetime.now()
 	ts = now.strftime("_%Y-%m-%d-%H-%M-%S")
@@ -431,12 +437,20 @@ elif args.list!=None:
 	users=getUsersFromList(args.list)
 	if args.projection=='default':
 		args.projection=='false'
-
+elif args.lists!=None:
+	users=[]
+	for x in args.lists:
+		users2=getUsersFromList(x)
+		for u in users2:
+			if u not in users: users.append(u)
+	if args.projection=='default':
+		args.projection=='false'
 
 if users!=[]:
 	tw=newt.getTwitterUsersDetailsByScreenNames(api,users)
 	newt.gephiOutputFileByName(api,projname+'/users_innerfriends.gdf', tw)
 
+if args.halt!=None: exit(-1)
 
 if args.filterfile!=None:
 	projname=args.filterfile
