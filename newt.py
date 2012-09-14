@@ -85,8 +85,9 @@ def clurn(burl):
   burl=burl.split('?')[0]
   return burl
 
-def ascii(s): return "".join(i for i in s if ord(i)<128)
-
+def ascii(s):
+	if s!=None: return "".join(i for i in s if ord(i)<128)
+	else: return 
 
 def getBackTypedURLData(burl,sources='twitter'):
   key=getBackTypeKey()
