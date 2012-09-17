@@ -305,7 +305,7 @@ def report(m, verbose=True):
 #----------------------------------------------------------------
 
 #----------------------------------------------------------------
-def getGenericCachedData(url, cachetime=36000):
+def getGenericCachedData(url, cachetime=360000):
   fetcher=DiskCacheFetcherfname('cache')
   fn=fetcher.fetch(url, cachetime)
   f=open(fn)
@@ -332,7 +332,7 @@ def getKloutDetails(twpl,kd={}):
 
 #----------------------------------------------------------------
 
-def getPeerIndexDetails(twpl,cachetime=36000):
+def getPeerIndexDetails(twpl,cachetime=360000):
   pkey=getPeerIndexKey()
   for u in twpl:
     url='http://api.peerindex.net/1/profile/show.json?id='+u+'&api_key='+pkey
@@ -1375,7 +1375,7 @@ def getDeliciousUrlURL(url):
   durl='http://feeds.delicious.com/v2/json/url/'+md5.new(url).hexdigest()  
   return durl
 
-def getDeliCachedData(url, cachetime=36000):
+def getDeliCachedData(url, cachetime=360000):
   fetcher=DiskCacheFetcherfname('cache')
   fn=fetcher.fetch(url, cachetime)
   f=open(fn)
