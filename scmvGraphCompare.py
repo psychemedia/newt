@@ -37,7 +37,7 @@ for label in labels:
 	fn=getCountsFilename(path,label)
 	f=open(fn,'wb+')
 	writer=csv.writer(f)
-	writer.writerow(['userid','username','indegree','outdegree','inNorm'])
+	writer.writerow(['userid','username','indegree','outdegree','inNorm','fo_count','normaliser'])
 	f.close()
 
 inUsers={}
@@ -64,7 +64,7 @@ for graph in graphs:
 			user=DG.node[node]['label']
 			graphs[graph]['inNodes'].append(user)
 			if user not in inUsers:
-				inUsers[user]={}
+				inUsers[user]={'fo_count':DG.node[node]['fo_count']}
 		if DG.out_degree(node)>0: graphs[graph]['outnodecount']=graphs[graph]['outnodecount']+1
 
 for user in inUsers:
@@ -82,7 +82,7 @@ for graph in graphs:
 		if user in inUsers:
 			inUsers[user][graph]['incount']=DG.in_degree(node)
 			inUsers[user][graph]['normcount']=float(DG.in_degree(node))/float(graphs[graph]['outnodecount'])
-		writer.writerow([node,DG.node[node]['label'],DG.in_degree(node),DG.out_degree(node),float(DG.in_degree(node))/float(graphs[graph]['outnodecount'])])
+		writer.writerow([node,DG.node[node]['label'],DG.in_degree(node),DG.out_degree(node),float(DG.in_degree(node))/float(graphs[graph]['outnodecount']),int(DG.node[node]['fo_count']),int(graphs[graph]['outnodecount'])])
 	f.close()
 
 if args.compare=='false':exit(-1)
