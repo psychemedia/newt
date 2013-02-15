@@ -92,7 +92,7 @@ for u in twd:
 	ux=[]
 	for x in [u.screen_name,u.name,u.description,u.location,u.time_zone]:
 		if x != None:
-			ux.append(unicodedata.normalize('NFKD', x).encode('ascii','ignore'))
+			ux.append(unicodedata.normalize('NFKD', unicode(x)).encode('ascii','ignore'))
 		else: ux.append('')
 	for x in [u.created_at,u.contributors_enabled,u.name,u.url,u.listed_count,u.friends_count,u.followers_count,u.statuses_count,u.favourites_count,u.id_str,u.id,u.verified,u.utc_offset,u.profile_image_url,u.protected]:
 		ux.append(x)
