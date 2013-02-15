@@ -46,6 +46,7 @@ twd=[]
 
 
 if args.list!=None:
+	source=args.list.replace('/','_')
 	users=getUsersFromList(args.list)
 	fd='reports/'+fpath+args.list.replace('/','_')+'/'
 	fn=fd+'listTest_'+now.strftime("_%Y-%m-%d-%H-%M-%S")+'.csv'
@@ -55,6 +56,7 @@ if args.list!=None:
   		tmp=api.lookup_users(screen_names=l)
   		for u in tmp:twd.append(u)
 elif args.userfo!=None:
+	source=args.userfo
 	fd='reports/'+fpath+args.userfo+'/'
 	fn=fd+'foTest_'+str(sampleSize)+'_'+now.strftime("_%Y-%m-%d-%H-%M-%S")+'.csv'
 	print 'grabbing follower IDs'
@@ -84,7 +86,7 @@ checkDir(fd)
 print 'Writing file...'
 
 writer=csv.writer(open(fn,'wb+'),quoting=csv.QUOTE_ALL)
-writer.writerow([ 'screen_name','name','description','location','time_zone','created_at','contributors_enabled','url','listed_count','friends_count','followers_count','statuses_count','favourites_count','id_str','id','verified','utc_offset','profile_image_url','protected'])
+writer.writerow([ 'source','screen_name','name','description','location','time_zone','created_at','contributors_enabled','url','listed_count','friends_count','followers_count','statuses_count','favourites_count','id_str','id','verified','utc_offset','profile_image_url','protected'])
 
 twDetails={}
 for u in twd:
@@ -94,7 +96,7 @@ for u in twd:
 		if x != None:
 			ux.append(unicodedata.normalize('NFKD', unicode(x)).encode('ascii','ignore'))
 		else: ux.append('')
-	for x in [u.created_at,u.contributors_enabled,u.name,u.url,u.listed_count,u.friends_count,u.followers_count,u.statuses_count,u.favourites_count,u.id_str,u.id,u.verified,u.utc_offset,u.profile_image_url,u.protected]:
+	for x in [source,u.created_at,u.contributors_enabled,u.name,u.url,u.listed_count,u.friends_count,u.followers_count,u.statuses_count,u.favourites_count,u.id_str,u.id,u.verified,u.utc_offset,u.profile_image_url,u.protected]:
 		ux.append(x)
 	try:
 		writer.writerow(ux)
