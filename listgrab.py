@@ -96,7 +96,7 @@ for u in twd:
 		if x != None:
 			ux.append(unicodedata.normalize('NFKD', unicode(x)).encode('ascii','ignore'))
 		else: ux.append('')
-	for x in [u.created_at,u.contributors_enabled,u.name,u.url,u.listed_count,u.friends_count,u.followers_count,u.statuses_count,u.favourites_count,u.id_str,u.id,u.verified,u.utc_offset,u.profile_image_url,u.protected]:
+	for x in [u.created_at,u.contributors_enabled,u.url,u.listed_count,u.friends_count,u.followers_count,u.statuses_count,u.favourites_count,u.id_str,u.id,u.verified,u.utc_offset,u.profile_image_url,u.protected]:
 		ux.append(x)
 	try:
 		writer.writerow(ux)
