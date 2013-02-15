@@ -163,7 +163,14 @@ def getGenericSearchUsers(tag,num,limit,projname,styp="tag",location='',dist='')
 	print alltweeps
 	#this is a fudge; return alltweeps as well tw? Also generalis w/ getSourceList?
 	return tw
-	
+
+#--- http://stackoverflow.com/questions/312443/how-do-you-split-a-list-into-evenly-sized-chunks-in-python
+def chunks(l, n):
+    """ Yield successive n-sized chunks from l.
+    """
+    for i in xrange(0, len(l), n):
+        yield l[i:i+n]	
+#--- 
 
 def getSourceList(users,typ,sampleSize,filterN):
 	tw={}
@@ -172,10 +179,18 @@ def getSourceList(users,typ,sampleSize,filterN):
 	print users
 	#we can look up a max of 100 users...
 	#TO DO / HACK just sample 100 for now, if required...?
-	if len(users)>100:
-  		users=random.sample(users, 100)
-  		print 'HACK FUDGE, only using 100 users:',users
-	twd=api.lookup_users(screen_names=users)
+	#if len(users)>100:
+  	#	users=random.sample(users, 500)
+  	#	print 'HACK FUDGE, only using 500 users:',users
+  	if len(users)>100:
+  		twd=[]
+  		#print 'users',users
+  		for l in chunks(users,100):
+  			#print 'partial',l
+  			tmp=api.lookup_users(screen_names=l)
+  			twd.append(tmp)
+  	else:
+		twd=api.lookup_users(screen_names=users)
 	for u in twd:
 		if  type(u) is newt.tweepy.models.User:
 			twc[u.screen_name]=filterN
