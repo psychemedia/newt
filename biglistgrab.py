@@ -84,7 +84,7 @@ else: exit(-1)
 
 for user in twn:
 	source=user
-	twd2=[]
+	twd=[]
 	fd='reports/'+fpath #+user+'/'
 	
 	fn=fd+user+'_fo_'+str(sampleSize)+'_'+now.strftime("_%Y-%m-%d-%H-%M-%S")+'.csv'
@@ -109,6 +109,6 @@ for user in twn:
 		print str(n)
 		n=n+1
   		tmp=api.lookup_users(user_ids=l)
-  		for u in tmp:twd2.append(u)
+  		for u in tmp:twd.append(u)
 	print '...done'
 	outputter()
