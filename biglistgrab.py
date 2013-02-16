@@ -83,25 +83,29 @@ if args.list!=None:
 else: exit(-1)
 
 for user in twn:
+	currSampleSize=sampleSize
 	source=user
 	twd=[]
 	fd='reports/'+fpath #+user+'/'
 	
 	fn=fd+user+'_fo_'+str(sampleSize)+'_'+now.strftime("_%Y-%m-%d-%H-%M-%S")+'.csv'
 	print 'grabbing follower IDs'
-	mi=tweepy.Cursor(api.followers_ids,id=user).items()
+	try:
+		mi=tweepy.Cursor(api.followers_ids,id=user).items()
+	except: 
+		continue
 	users=[]
 	for m in mi: users.append(m)
 	biglen=str(len(users))
 	print 'Number of followers:',biglen
 	#HACK
-	if str(len(users))>10000: sampleSize=10000
+	if str(len(users))>10000: currSampleSize=10000
 	if sampleSize>0:
-		if len(users)>sampleSize:
-			users=random.sample(users, sampleSize)
-			print 'Using a random sample of '+str(sampleSize)+' from '+str(biglen)
+		if len(users)>currSampleSize:
+			users=random.sample(users, currSampleSize)
+			print 'Using a random sample of '+str(currSampleSize)+' from '+str(biglen)
 		else:
-			print 'Fewer members ('+str(len(users))+') than sample size: '+str(sampleSize) 
+			print 'Fewer members ('+str(len(users))+') than sample size: '+str(currSampleSize) 
 	n=1
 	print 'Hundred batching' 
 	for l in newt.chunks(users,100):
