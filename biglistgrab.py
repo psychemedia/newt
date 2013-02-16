@@ -100,7 +100,7 @@ for user in twn:
 	print 'Number of followers:',biglen
 	#HACK
 	if str(len(users))>10000: currSampleSize=10000
-	if sampleSize>0:
+	if currSampleSize>0:
 		if len(users)>currSampleSize:
 			users=random.sample(users, currSampleSize)
 			print 'Using a random sample of '+str(currSampleSize)+' from '+str(biglen)
