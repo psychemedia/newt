@@ -201,8 +201,8 @@ def getSourceList(users,typ,sampleSize,filterN):
 	k=[ 'source','screen_name','name','description','location','time_zone','created_at','contributors_enabled','url','listed_count','friends_count','followers_count','statuses_count','favourites_count','id_str','id','verified','utc_offset','profile_image_url','protected']
 	writer.writerow(k)
 	
-	for uu in twd:
-		u=twd[uu]
+	for uu in twDetails:
+		u=twDetails[uu]
 		ux=['']
 		for x in [u.screen_name,u.name,u.description,u.location,u.time_zone]:
 			if x != None:
