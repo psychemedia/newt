@@ -1,4 +1,4 @@
-import sys, os, newt, argparse, datetime, csv, random
+import sys, os, newt, argparse, datetime, csv, random,unicodedata
 import networkx as nx
 import newtx as nwx
 
@@ -195,6 +195,25 @@ def getSourceList(users,typ,sampleSize,filterN):
 		if  type(u) is newt.tweepy.models.User:
 			twc[u.screen_name]=filterN
 			twDetails[u.screen_name]=u
+			
+	fn=projname+'/userdetails.csv'
+	writer=csv.writer(open(fn,'wb+'),quoting=csv.QUOTE_ALL)
+	k=[ 'source','screen_name','name','description','location','time_zone','created_at','contributors_enabled','url','listed_count','friends_count','followers_count','statuses_count','favourites_count','id_str','id','verified','utc_offset','profile_image_url','protected']
+	writer.writerow(k)
+	
+	for uu in twd:
+		u=twd[uu]
+		ux=['']
+		for x in [u.screen_name,u.name,u.description,u.location,u.time_zone]:
+			if x != None:
+				ux.append(unicodedata.normalize('NFKD', unicode(x)).encode('ascii','ignore'))
+			else: ux.append('')
+		for x in [u.created_at,u.contributors_enabled,u.url,u.listed_count,u.friends_count,u.followers_count,u.statuses_count,u.favourites_count,u.id_str,u.id,u.verified,u.utc_offset,u.profile_image_url,u.protected]:
+			ux.append(x)
+		try:
+			writer.writerow(ux)
+		except: pass
+			
 	if sampleSize==0: sampleSize='all'
 	for user in users:
 		print "Getting ",typ," of ",user

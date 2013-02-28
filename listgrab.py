@@ -85,7 +85,7 @@ checkDir(fd)
 	
 print 'Writing file...'
 
-writer=csv.writer(open(fn,'wb+'),quoting=csv.QUOTE_ALL)
+writer=csv.writer(open(fn,'wb'),quoting=csv.QUOTE_ALL)
 writer.writerow([ 'source','screen_name','name','description','location','time_zone','created_at','contributors_enabled','url','listed_count','friends_count','followers_count','statuses_count','favourites_count','id_str','id','verified','utc_offset','profile_image_url','protected'])
 
 twDetails={}

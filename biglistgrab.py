@@ -89,13 +89,15 @@ for user in twn:
 	fd='reports/'+fpath #+user+'/'
 	
 	fn=fd+user+'_fo_'+str(sampleSize)+'_'+now.strftime("_%Y-%m-%d-%H-%M-%S")+'.csv'
-	print 'grabbing follower IDs'
+	print 'grabbing follower IDs for',user
 	try:
 		mi=tweepy.Cursor(api.followers_ids,id=user).items()
 	except: 
 		continue
 	users=[]
-	for m in mi: users.append(m)
+	try:
+		for m in mi: users.append(m)
+	except: continue
 	biglen=str(len(users))
 	print 'Number of followers:',biglen
 	#HACK
@@ -112,7 +114,9 @@ for user in twn:
 		#print 'partial',l
 		print str(n)
 		n=n+1
-  		tmp=api.lookup_users(user_ids=l)
-  		for u in tmp:twd.append(u)
+		try:
+	  		tmp=api.lookup_users(user_ids=l)
+	  		for u in tmp:twd.append(u)
+	  	except: continue
 	print '...done'
 	outputter()
