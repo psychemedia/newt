@@ -1,4 +1,4 @@
-import tweepy,sys, os, newt, argparse, datetime, csv, random
+import tweepy,sys, os, newt, argparse, datetime, csv, random,math
 import networkx as nx
 import newtx as nwx
 
@@ -11,10 +11,12 @@ def checkDir(dirpath):
 parser = argparse.ArgumentParser(description='Data about list members')
 group = parser.add_mutually_exclusive_group()
 group.add_argument('-list',help='Grab users from a list. Provide source as: username/listname')
+group.add_argument('-users',nargs='*', help="A space separated list of usernames (without the @) for whom you want to do the grab.")
 
 parser.add_argument('-sample',default=197,type=int,metavar='N',help='Sample the friends/followers (user, users); use 0 if you want all (users/users).')
 parser.add_argument('-fname',default='',help='Custom folder name')
 
+ORDEREDSAMPLE=1
 
 args=parser.parse_args()
 
@@ -45,7 +47,7 @@ now = datetime.datetime.now()
 def outputter():
 	checkDir(fd)
 		
-	print 'Writing file...'
+	print 'Writing file...',fn
 	
 	writer=csv.writer(open(fn,'wb+'),quoting=csv.QUOTE_ALL)
 	writer.writerow([ 'source','screen_name','name','description','location','time_zone','created_at','contributors_enabled','url','listed_count','friends_count','followers_count','statuses_count','favourites_count','id_str','id','verified','utc_offset','profile_image_url','protected'])
@@ -80,6 +82,13 @@ if args.list!=None:
   			twd.append(u)
   			twn.append(u.screen_name)
   	outputter()
+elif args.users!=None:
+	for l in newt.chunks(args.users,100):
+		#print 'partial',l
+  		tmp=api.lookup_users(screen_names=l)
+  		for u in tmp:
+  			twd.append(u)
+  			twn.append(u.screen_name)
 else: exit(-1)
 
 for user in twn:
@@ -102,10 +111,24 @@ for user in twn:
 	print 'Number of followers:',biglen
 	#HACK
 	if str(len(users))>10000: currSampleSize=10000
+	#this breaks the date recreation on followers - need a run of 10000 users
 	if currSampleSize>0:
 		if len(users)>currSampleSize:
-			users=random.sample(users, currSampleSize)
-			print 'Using a random sample of '+str(currSampleSize)+' from '+str(biglen)
+			if ORDEREDSAMPLE !=1:
+				users=random.sample(users, currSampleSize)
+				print 'Using a random sample of '+str(currSampleSize)+' from '+str(biglen)
+			else:
+				#tmpsamp=int(len(users)/currSampleSize)
+				#need some way of getting 100 consecutive samples of 100 or so users?
+				print 'Using ordered sample of '+str(currSampleSize)+' from '+str(biglen)
+				ss=[]
+				offset=math.floor(len(users)/100)
+				for i in range(100):
+					randoff=random.randint(0, offset-100)
+					li=int(randoff+i*offset)
+					ui=int(li+100-1)
+					ss=ss+users[li:ui]
+				users=ss
 		else:
 			print 'Fewer members ('+str(len(users))+') than sample size: '+str(currSampleSize) 
 	n=1
